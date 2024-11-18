@@ -53,7 +53,7 @@ func main() {
 		}
 	}
 
-	crib := "christmasday"
+	crib := "christmasdaywithyou"
 	// var crib string
 	if crib == "" {
 		_, err := fmt.Scanln(&cipherText)
