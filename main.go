@@ -66,7 +66,7 @@ func main() {
 	fmt.Println("Crib: ", crib)
 
 	start := 0
-	for start + len(crib) < len(cipherText) {
+	for start + len(crib) - 1 < len(cipherText) {
 		// find the slice of cipher text that could work with the crib
 		// unfortunately, in the hardcoded example above, almost every location is a valid crib
 		// the actual solution is
