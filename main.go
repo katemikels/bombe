@@ -65,9 +65,8 @@ func main() {
 	fmt.Println("Cipher Text: ", cipherText)
 	fmt.Println("Crib: ", crib)
 
-	plugboardFound := false
 	start := 0
-	for plugboardFound == false {
+	for start + len(crib) < len(cipherText) {
 		// find the slice of cipher text that could work with the crib
 		// unfortunately, in the hardcoded example above, almost every location is a valid crib
 		// the actual solution is
@@ -92,22 +91,14 @@ func main() {
 		// if no errors come up and everything makes it into these two maps,
 		// then we found the plugboard settings and the rotator arrangement at the same time
 		// (previous lines will continue the loop before getting this far)
-		plugboardFound = true
+		start = cribStart + 1
 	}
 
 	// go through the cipher text and decode using the plugboard/rotator settings/reflector
 	// mark letters with ? that we don't know (don't have plugboard settings for those letters)
 
-	// testing reflector
-	fmt.Println("a", reflector('a')) // == y
-	fmt.Println("h", reflector('h')) // d
-	fmt.Println("i", reflector('i')) // p
-	fmt.Println("z", reflector('z')) // t
-	fmt.Println("p", reflector('p')) // i
-
-	// print solution
+	// print possible solution
 	fmt.Println("Decrypted text: <DNE>")
 
-	// manually fill in the letters that are still unsolved -- can't be done with code
 	return
 }
