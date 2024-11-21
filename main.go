@@ -75,13 +75,19 @@ func main() {
 		cribStart, cribEnd := findCrib(start, cipherText, crib)
 		fmt.Println(cribStart, cribEnd)
 
-		// graph it up
-		// on all rotator settings, set up a way to identify loops to determine the plugboard
-		// only duplicate letters allowed are when it exists as a key once in each map
-		// the arrangement is correct if the new key and val pair is not in the existing key and val sets respectively
-
-		//cipherCribIntersection := make(map[rune]rune)  // plugboard keys set
-		//rotatorCribIntersection := make(map[rune]rune) // plugboard vals set
+		// call function -> createMenu()
+		// - decide on paths
+		// - decide on input letter (start of loop path)
+		// runBombe() - returns possible plugboards with associated rotator settings
+		// - check all rotator positions (which ones, what order, starting order)
+		// - for all guesses (the alphabet) with input letter
+		// - for all paths, break at contradictions (remember them for shortcuts later?)
+		// - send through enigma rotators/reflector -> write the rotators to step through to the index
+		// - no contradictions, is a possibility (check other paths?)
+		// add all possibilities to list of all possibilities for all possible cribs
+		// after the loop, checkCipherText() to check our possibilities against the entire message
+		// prints out decrypted ciphertext
+		// command line utility????
 
 		// if no errors come up and everything makes it into these two maps,
 		// then we found the plugboard settings and the rotator arrangement at the same time
