@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // sketch of how to do the reflector.
 // a switch statement would take a lot more code and writing,
@@ -41,6 +43,38 @@ func findCrib(start int, text string, crib string) (int, int) {
 	return -1, -1
 }
 
+func makeMenu(crib string, cipherCrib string) map[string]map[string]int {
+	menu := make(map[string]map[string]int)
+	fmt.Println(cipherCrib)
+
+	for i, cipherLetterInt := range cipherCrib {
+		cipherLetter := string(uint8(cipherLetterInt))
+		plainLetter := string(crib[i])
+
+		// the cipher letter is not in the menu, add it linked to the plain letter
+		if _, ok := menu[cipherLetter]; !ok {
+			menu[cipherLetter] = map[string]int{plainLetter: i}
+		} else {
+			// cipher letter is in the menu, and the plain letter is not linked, add it!
+			if _, ok := menu[cipherLetter][plainLetter]; !ok {
+				menu[cipherLetter][plainLetter] = i
+			}
+		}
+		// the plain letter is not in the menu, link it to cipher letter
+		if _, ok := menu[plainLetter]; !ok {
+			menu[plainLetter] = map[string]int{cipherLetter: i}
+		} else {
+			// plain letter is in the menu, and the cipher letter is not linked, add it!
+			if _, ok := menu[plainLetter][cipherLetter]; !ok {
+				menu[plainLetter][cipherLetter] = i
+			}
+		}
+
+		// if the combo is already in the menu, we don't add anything or change the index vals
+	}
+	return menu
+}
+
 func main() {
 	// in the final product, cipherText and crib won't be pre-initialized,
 	// remove the surrounding if block
@@ -66,16 +100,14 @@ func main() {
 	fmt.Println("Crib: ", crib)
 
 	plugboardFound := false
-	start := 0
+	start := 28 // solution: start = 29, end = 47 inclusive. Change start:=0 when done with bomb dev
 	for plugboardFound == false {
-		// find the slice of cipher text that could work with the crib
-		// unfortunately, in the hardcoded example above, almost every location is a valid crib
-		// the actual solution is
-		// start = 29, end = 40, but this returns 0 and 11 respectively
+		// find a possible crib and make the corresponding menu
 		cribStart, cribEnd := findCrib(start, cipherText, crib)
-		fmt.Println(cribStart, cribEnd)
+		cipherCrib := cipherText[cribStart : cribEnd+1] // +1 because findCrib() returned inclusive values?
+		menu := makeMenu(crib, cipherCrib)
+		fmt.Println(menu) // so that the go compiler doesn't get mad at us not using menu
 
-		// graph it up
 		// on all rotator settings, set up a way to identify loops to determine the plugboard
 		// only duplicate letters allowed are when it exists as a key once in each map
 		// the arrangement is correct if the new key and val pair is not in the existing key and val sets respectively
@@ -91,13 +123,6 @@ func main() {
 
 	// go through the cipher text and decode using the plugboard/rotator settings/reflector
 	// mark letters with ? that we don't know (don't have plugboard settings for those letters)
-
-	// testing reflector
-	fmt.Println("a", reflector('a')) // == y
-	fmt.Println("h", reflector('h')) // d
-	fmt.Println("i", reflector('i')) // p
-	fmt.Println("z", reflector('z')) // t
-	fmt.Println("p", reflector('p')) // i
 
 	// print solution
 	fmt.Println("Decrypted text: <DNE>")
