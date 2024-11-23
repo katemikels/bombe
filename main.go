@@ -38,20 +38,20 @@ func findCrib(start int, text string, crib string) (int, int) {
 			end += 1
 		}
 	}
-	return -1, -1
+	return -1, -1 // no possible crib found
 }
 
-func makeMenu(crib string, cipherCrib string) map[string]map[string]int {
-	menu := make(map[string]map[string]int)
+func createMenu(crib string, cipherCrib string) map[rune]map[rune]int {
+	menu := make(map[rune]map[rune]int)
 	fmt.Println(cipherCrib)
 
 	for i, cipherLetterInt := range cipherCrib {
-		cipherLetter := string(uint8(cipherLetterInt))
-		plainLetter := string(crib[i])
+		cipherLetter := cipherLetterInt
+		plainLetter := rune(crib[i])
 
 		// the cipher letter is not in the menu, add it linked to the plain letter
 		if _, ok := menu[cipherLetter]; !ok {
-			menu[cipherLetter] = map[string]int{plainLetter: i}
+			menu[cipherLetter] = map[rune]int{plainLetter: i}
 		} else {
 			// cipher letter is in the menu, and the plain letter is not linked, add it!
 			if _, ok := menu[cipherLetter][plainLetter]; !ok {
@@ -60,7 +60,7 @@ func makeMenu(crib string, cipherCrib string) map[string]map[string]int {
 		}
 		// the plain letter is not in the menu, link it to cipher letter
 		if _, ok := menu[plainLetter]; !ok {
-			menu[plainLetter] = map[string]int{cipherLetter: i}
+			menu[plainLetter] = map[rune]int{cipherLetter: i}
 		} else {
 			// plain letter is in the menu, and the cipher letter is not linked, add it!
 			if _, ok := menu[plainLetter][cipherLetter]; !ok {
@@ -97,18 +97,19 @@ func main() {
 	fmt.Println("Cipher Text: ", cipherText)
 	fmt.Println("Crib: ", crib)
 
-	start := 0
-	for start + len(crib) - 1 < len(cipherText) {
-		// find the slice of cipher text that could work with the crib
-		// unfortunately, in the hardcoded example above, almost every location is a valid crib
-		// the actual solution is
-		// start = 29, end = 40, but this returns 0 and 11 respectively
+	start := 0 //solution: start = 29, end = 47 (inclusive)
+	for start+len(crib) < len(cipherText) {
+		// find a possible crib and create the corresponding menu
 		cribStart, cribEnd := findCrib(start, cipherText, crib)
+		if cribStart == -1 || cribEnd == -1 {
+			// no cribs left -- stop and go through all the possibilities collected
+			break
+		}
 		cipherCrib := cipherText[cribStart : cribEnd+1] // +1 because findCrib() returned inclusive values?
-		menu := makeMenu(crib, cipherCrib)
+
+		menu := createMenu(crib, cipherCrib)
 		fmt.Println(menu) // so that the go compiler doesn't get mad at us not using menu
 
-		// call function -> createMenu()
 		// - decide on paths
 		// - decide on input letter (start of loop path)
 		// runBombe() - returns possible plugboards with associated rotator settings
