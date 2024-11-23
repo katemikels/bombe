@@ -1,6 +1,26 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
+
+// bc go doesn't have a queue implementation. Taken from https://www.geeksforgeeks.org/queue-in-go-language/
+func enqueue(queue []rune, element rune) []rune {
+	queue = append(queue, element) // Simply append to enqueue.
+	fmt.Println("Enqueued:", element)
+	return queue
+}
+
+func dequeue(queue []rune) (rune, []rune) {
+	element := queue[0] // The first element is the one to be dequeued.
+	if len(queue) == 1 {
+		var tmp = []rune{}
+		return element, tmp
+
+	}
+
+	return element, queue[1:] // Slice off the element once it is dequeued.
+}
 
 // sketch of how to do the reflector.
 // a switch statement would take a lot more code and writing,
@@ -73,6 +93,81 @@ func createMenu(crib string, cipherCrib string) map[rune]map[rune]int {
 	return menu
 }
 
+func findPaths(menu map[rune]map[rune]int) [][]rune {
+	var paths [][]rune
+	//var pathsByRune = make(map[rune][][]rune) // so we're not enqueuing/dequeuing on messy data structures?
+	//queue := make([]rune, 0)
+	//firstElement := true
+	//for k, v := range menu {
+	//	if firstElement { // initialize the queue
+	//		firstElement = false
+	//		enqueue(queue, k)
+	//	} else {
+	//
+	//	}
+	//}
+	return paths
+}
+
+func stepRotors(rotors []string, pos []rune) []rune {
+	// rotors: list of 3 strings, the left, middle, and right rotor names respectively
+	// pos: the current letter visible on each rotor. Ex: "ABC" means left rotor is on A
+
+	// TODO confirm these are the right turnovers??? From OtherBombCode/rotors.txt. Also assuming moving B->R is what causes turnover in rotor I
+	rotorInfo := map[string][]string{
+		"I":   []string{"EKMFLGDQVZNTOWYHXUSPAIBRCJ", "R"},
+		"II":  []string{"AJDKSIRUXBLHWTMCQGZNPYFVOE", "F"},
+		"III": []string{"BDFHJLCPRTXVZNYEIWGAKMUSQO", "W"},
+		"IV":  []string{"ESOVPZJAYQUIRHXLNFTGKDCMWB", "K"},
+		"V":   []string{"VZBRGITYUPSDNHLXAWMJQOFECK", "A"},
+	}
+
+	leftPos := rune(pos[0])
+	middlePos := rune(pos[1])
+	rightPos := rune(pos[2])
+
+	leftRotor := rotors[0]
+	middleRotor := rotors[1]
+	rightRotor := rotors[2]
+
+	var newLeftPos = leftPos
+	var newMiddlePos = middlePos
+	var newRightPos = rightPos
+
+	// stepping rotors only advances the right rotor, unless it crosses a turning point
+	for i, c := range rotorInfo[rightRotor][0] {
+		if c == rightPos {
+			newRightPos = rune(rotorInfo[rightRotor][0][(i+1)%26])
+			break
+		}
+	}
+	// if right hit the turnover point
+	if newRightPos == rune(rotorInfo[rightRotor][1][0]) {
+		for i, c := range rotorInfo[middleRotor][0] {
+			if c == middlePos {
+				newMiddlePos = rune(rotorInfo[middleRotor][0][(i+1)%26])
+				break
+			}
+		}
+	}
+	// if middle hit a turnover point
+	if newMiddlePos == rune(rotorInfo[middleRotor][1][0]) {
+		for i, c := range rotorInfo[leftRotor][0] {
+			if c == leftPos {
+				newLeftPos = rune(rotorInfo[leftRotor][0][(i+1)%26])
+				break
+			}
+		}
+	}
+	var newPos = []rune{}
+	newPos = append(newPos, newLeftPos, newMiddlePos, newRightPos)
+	return newPos
+}
+
+func encryptChar() {
+	//stepRotors()
+}
+
 func main() {
 	// in the final product, cipherText and crib won't be pre-initialized,
 	// remove the surrounding if block
@@ -110,8 +205,17 @@ func main() {
 		menu := createMenu(crib, cipherCrib)
 		fmt.Println(menu) // so that the go compiler doesn't get mad at us not using menu
 
-		// - decide on paths
-		// - decide on input letter (start of loop path)
+		// find paths
+		paths := findPaths(menu)
+		fmt.Println(paths)
+
+		// example code for stepping rotors. Works!
+		// TODO put this in a smarter spot
+		var position = []rune{'B', 'B', 'I'}
+		fmt.Println(position)
+		newPosition := stepRotors([]string{"I", "IV", "III"}, position)
+		fmt.Println(newPosition)
+
 		// runBombe() - returns possible plugboards with associated rotator settings
 		// - check all rotator positions (which ones, what order, starting order)
 		// - for all guesses (the alphabet) with input letter
