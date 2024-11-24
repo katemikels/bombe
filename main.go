@@ -2,24 +2,24 @@ package main
 
 import (
 	"fmt"
+	"slices"
 )
 
-// bc go doesn't have a queue implementation. Taken from https://www.geeksforgeeks.org/queue-in-go-language/
-func enqueue(queue []rune, element rune) []rune {
-	queue = append(queue, element) // Simply append to enqueue.
-	fmt.Println("Enqueued:", element)
-	return queue
-}
+var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-func dequeue(queue []rune) (rune, []rune) {
-	element := queue[0] // The first element is the one to be dequeued.
-	if len(queue) == 1 {
-		var tmp = []rune{}
-		return element, tmp
+// create an array of all possible rotor positions
 
+func rotorPositions() []string {
+	positions := make([]string, 0)
+	for i := 0; i < len(alphabet); i++ {
+		for j := 0; j < len(alphabet); j++ {
+			for k := 0; k < len(alphabet); k++ {
+				position := string(alphabet[i]) + string(alphabet[j]) + string(alphabet[k])
+				positions = append(positions, position)
+			}
+		}
 	}
-
-	return element, queue[1:] // Slice off the element once it is dequeued.
+	return positions
 }
 
 // sketch of how to do the reflector.
@@ -62,7 +62,7 @@ func findCrib(start int, text string, crib string) (int, int) {
 
 func createMenu(crib string, cipherCrib string) map[rune]map[rune]int {
 	menu := make(map[rune]map[rune]int)
-	fmt.Println(cipherCrib)
+	//fmt.Println(cipherCrib)
 
 	for i, cipherLetterInt := range cipherCrib {
 		cipherLetter := cipherLetterInt
@@ -92,149 +92,57 @@ func createMenu(crib string, cipherCrib string) map[rune]map[rune]int {
 	return menu
 }
 
-func findPaths(menu map[rune]map[rune]int) [][]rune {
-	var paths [][]rune
-	//var pathsByRune = make(map[rune][][]rune) // so we're not enqueuing/dequeuing on messy data structures?
-	//queue := make([]rune, 0)
-	//firstElement := true
-	//for k, v := range menu {
-	//	if firstElement { // initialize the queue
-	//		firstElement = false
-	//		enqueue(queue, k)
-	//	} else {
-	//
-	//	}
-	//}
-	return paths
+// DFS to find paths in the menu
+func searchForPaths(letter rune, menu map[rune]map[rune]int, current rune, path []rune, paths *[]string) {
+	// for all the letters associated with the current letter
+	for new := range menu[current] {
+		// if the new letter is the same as the start (and the path is longer than two) then we found a loop
+		if new == letter && len(path) > 2 {
+			// copy
+			pathCopy := make([]rune, len(path))
+			copy(pathCopy, path)
+			pathCopy = append(pathCopy, letter)
+			// add to list
+			*paths = append(*paths, string(pathCopy))
+			continue
+		}
+
+		// if already in the path and not start, move on - not helpful
+		if slices.Contains(path, new) {
+			continue
+		}
+
+		// copy
+		pathCopy := make([]rune, len(path))
+		copy(pathCopy, path)
+		pathCopy = append(pathCopy, new) // Changed from letter to new
+
+		// recursive call
+		searchForPaths(letter, menu, new, pathCopy, paths)
+	}
 }
 
-// TODO if you can reverse a string in go, you can turn this into a loop.
-// using indices would make for shorter code? But would also be less
-// readable. This code (I think?) is pretty clear in what it does.
-func stepRotors(rotors []string, pos []rune) []rune {
-	// rotors: list of 3 strings, the left, middle, and right rotor names respectively
-	// pos: the current letter visible on each rotor. Ex: "ABC" means left rotor is on A
+func runBombe(paths string, inputLetter string, menu map[rune]map[rune]int) {
+	// - check all rotator positions (which ones, what order, starting order)
+	// this does not currently consider the different possible rotors
+	rotorPositions := rotorPositions()
 
-	// TODO confirm these are the right turnovers??? From OtherBombCode/rotors.txt. Also assuming moving B->R is what causes turnover in rotor I
-	rotorInfo := map[string][]string{
-		"I":   {"EKMFLGDQVZNTOWYHXUSPAIBRCJ", "R"},
-		"II":  {"AJDKSIRUXBLHWTMCQGZNPYFVOE", "F"},
-		"III": {"BDFHJLCPRTXVZNYEIWGAKMUSQO", "W"},
-		"IV":  {"ESOVPZJAYQUIRHXLNFTGKDCMWB", "K"},
-		"V":   {"VZBRGITYUPSDNHLXAWMJQOFECK", "A"},
-	}
+	for _, rotor := range rotorPositions {
+		// - for all guesses (the alphabet) with input letter
+		for _, guess := range alphabet {
+			// - for all paths, break at contradictions (remember them for shortcuts later?)
+			for _, path := range paths {
+				// - send through enigma rotators/reflector -> write the rotators to step through to the index
+				// - no contradictions, is a possibility (check other paths?)
+				// add all possibilities to list of all possibilities for all possible cribs
 
-	// friendly names!
-	leftPos := pos[0]
-	middlePos := pos[1]
-	rightPos := pos[2]
-
-	leftRotor := rotors[0]
-	middleRotor := rotors[1]
-	rightRotor := rotors[2]
-
-	// stepping rotors only advances the right rotor, unless it crosses a turning point
-	for i, c := range rotorInfo[rightRotor][0] {
-		if c == rightPos {
-			rightPos = rune(rotorInfo[rightRotor][0][(i+1)%26])
-			break
-		}
-	}
-	// if right hit the turnover point
-	if rightPos == rune(rotorInfo[rightRotor][1][0]) {
-		for i, c := range rotorInfo[middleRotor][0] {
-			if c == middlePos {
-				middlePos = rune(rotorInfo[middleRotor][0][(i+1)%26])
-				break
+				// keep things happy :)
+				fmt.Println(rotor)
+				fmt.Println(guess)
+				fmt.Println(path)
 			}
 		}
 	}
-	// if middle hit a turnover point
-	if middlePos == rune(rotorInfo[middleRotor][1][0]) {
-		for i, c := range rotorInfo[leftRotor][0] {
-			if c == leftPos {
-				leftPos = rune(rotorInfo[leftRotor][0][(i+1)%26])
-				break
-			}
-		}
-	}
-	var newPos []rune
-	newPos = append(newPos, leftPos, middlePos, rightPos)
-	return newPos
-}
-
-// practically to get where the letter is on a rotator. "Where is `pos` in my `str`?
-func index(pos rune, str string) rune {
-	for i, c := range str {
-		if c == pos {
-			return rune(i)
-		}
-	}
-	return -1
-}
-
-// this makes me cringe. but yes. it does work.
-func encryptChar(char rune, rotors []string, pos []rune) (rune, []rune) {
-	// TODO this does not use the plugboard in the encryption
-
-	// before a character goes through, the rotators step
-	pos = stepRotors(rotors, pos)
-
-	//charIdx := char - 65
-
-	return char, pos
-
-	//// friendly names!
-	//leftRotor := rotors[0]
-	//middleRotor := rotors[1]
-	//rightRotor := rotors[2]
-	//
-	//leftPos := index(pos[0], rotorInfo[leftRotor][0])
-	//middlePos := index(pos[1], rotorInfo[middleRotor][0])
-	//rightPos := index(pos[2], rotorInfo[rightRotor][0])
-	//
-	//charIdx := char - 65
-	//// right rotor
-	////char = rune(rotorInfo[rightRotor][0][(charIdx+rightPos)%26])
-	////charIdx = index(char, rotorInfo[rightRotor][0])
-	////fmt.Printf("after right: %c\n", char)
-	//charIdx = (charIdx + rightPos) % 26
-	//
-	//// middle rotor
-	////char = rune(rotorInfo[middleRotor][0][(charIdx+middlePos)%26])
-	////charIdx = index(char, rotorInfo[middleRotor][0])
-	////fmt.Printf("after middle: %c\n", char)
-	//charIdx = (charIdx + middlePos) % 26
-	//
-	//// left rotor
-	////char = rune(rotorInfo[leftRotor][0][(charIdx+leftPos)%26])
-	////charIdx = index(char, rotorInfo[leftRotor][0])
-	////fmt.Printf("after left: %c\n", char)
-	//charIdx = (charIdx + leftPos) % 26
-	//
-	//// reflector
-	//char = reflector(char)
-	//charIdx = index(char, "YRUHQSLDPXNGOKMIEBFZCWVJAT") // hardcoded for the reflector
-	////fmt.Printf("reflector: %c\n", char)
-	//
-	//// left rotor
-	////char = rune(rotorInfo[leftRotor][0][(charIdx+leftPos)%26])
-	////charIdx = index(char, rotorInfo[leftRotor][0])
-	////fmt.Printf("left: %c\n", char)
-	//charIdx = (charIdx + leftPos) % 26
-	//
-	//// middle rotor
-	////char = rune(rotorInfo[middleRotor][0][(charIdx+middlePos)%26])
-	////charIdx = index(char, rotorInfo[middleRotor][0])
-	////fmt.Printf("middle: %c\n", char)
-	//charIdx = (charIdx + middlePos) % 26
-	//
-	//// right rotor
-	////char = rune(rotorInfo[rightRotor][0][(charIdx+rightPos)%26])
-	////fmt.Printf("right: %c\n", char)
-	//charIdx = (charIdx + rightPos) % 26
-	//char = charIdx + 65
-	//fmt.Printf("final: %c\n", char)
 }
 
 func main() {
@@ -258,6 +166,9 @@ func main() {
 		}
 	}
 
+	fmt.Println("Cipher Text: ", cipherText)
+	fmt.Println("Crib: ", crib)
+
 	start := 0 //solution: start = 29, end = 47 (inclusive)
 	for start+len(crib) < len(cipherText) {
 		// find a possible crib and create the corresponding menu
@@ -269,29 +180,23 @@ func main() {
 		cipherCrib := cipherText[cribStart : cribEnd+1] // +1 because findCrib() returned inclusive values?
 
 		menu := createMenu(crib, cipherCrib)
+		//fmt.Println(menu) // so that the go compiler doesn't get mad at us not using menu
 
-		// TODO find paths -- this isn't implemented yet
-		paths := findPaths(menu)
-		fmt.Println(paths)
+		// - decide on paths
+		var paths []string
+		for letter := range menu {
+			path := []rune{letter}
+			searchForPaths(letter, menu, letter, path, &paths)
+		}
 
-		// runBombe() - returns possible plugboards with associated rotator settings
-		// - check all rotator positions (which ones, what order, starting order)
+		fmt.Println("paths: ", paths)
 
-		// example code for stepping rotors. Works!
-		var position = []rune{'B', 'A', 'J'}
-		fmt.Println(position)
-		newPosition := stepRotors([]string{"I", "IV", "III"}, position)
-		fmt.Println(newPosition) // to make newPosition used
+		// paths found
+		if len(paths) != 0 {
+			// - decide on input letter (start of loop path)
+			//runBombe(paths, inputLetter, menu) // update as parameters change and given output
+		}
 
-		// example code for encrypting char
-		char := 'C'
-		char, position = encryptChar(char, []string{"I", "IV", "III"}, position)
-
-		// - for all guesses (the alphabet) with input letter
-		// - for all paths, break at contradictions (remember them for shortcuts later?)
-		// - send through enigma rotators/reflector -> write the rotators to step through to the index
-		// - no contradictions, is a possibility (check other paths?)
-		// add all possibilities to list of all possibilities for all possible cribs
 		// after the loop, checkCipherText() to check our possibilities against the entire message
 		// prints out decrypted ciphertext
 		// command line utility????
@@ -300,7 +205,6 @@ func main() {
 		// then we found the plugboard settings and the rotator arrangement at the same time
 		// (previous lines will continue the loop before getting this far)
 		start = cribStart + 1
-		break
 	}
 
 	// go through the cipher text and decode using the plugboard/rotator settings/reflector
