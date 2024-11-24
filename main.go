@@ -26,17 +26,16 @@ func dequeue(queue []rune) (rune, []rune) {
 // a switch statement would take a lot more code and writing,
 // do we want to use runes? Otherwise we'd be doing a lot of
 // conversion to strings on line 15 for alph[i]
-func reflector(in rune) string {
-	in8 := uint8(in)
-	alph := "abcdefghijklmnopqrstuvwxyz"
-	ukwb := "yruhqsldpxngokmiebfzcwvjat"
+func reflector(in rune) rune {
+	alph := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	ukwb := "YRUHQSLDPXNGOKMIEBFZCWVJAT"
 
 	for i := 0; i < 26; i++ {
-		if alph[i] == in8 {
-			return string(ukwb[i])
+		if rune(alph[i]) == in {
+			return rune(ukwb[i])
 		}
 	}
-	return ""
+	return '0' // not found
 }
 
 // this is not the most efficient way, but it works
@@ -109,6 +108,9 @@ func findPaths(menu map[rune]map[rune]int) [][]rune {
 	return paths
 }
 
+// TODO if you can reverse a string in go, you can turn this into a loop.
+// using indices would make for shorter code? But would also be less
+// readable. This code (I think?) is pretty clear in what it does.
 func stepRotors(rotors []string, pos []rune) []rune {
 	// rotors: list of 3 strings, the left, middle, and right rotor names respectively
 	// pos: the current letter visible on each rotor. Ex: "ABC" means left rotor is on A
@@ -122,6 +124,7 @@ func stepRotors(rotors []string, pos []rune) []rune {
 		"V":   {"VZBRGITYUPSDNHLXAWMJQOFECK", "A"},
 	}
 
+	// friendly names!
 	leftPos := pos[0]
 	middlePos := pos[1]
 	rightPos := pos[2]
@@ -130,38 +133,108 @@ func stepRotors(rotors []string, pos []rune) []rune {
 	middleRotor := rotors[1]
 	rightRotor := rotors[2]
 
-	newLeftPos := leftPos
-	newMiddlePos := middlePos
-	newRightPos := rightPos
-
 	// stepping rotors only advances the right rotor, unless it crosses a turning point
 	for i, c := range rotorInfo[rightRotor][0] {
 		if c == rightPos {
-			newRightPos = rune(rotorInfo[rightRotor][0][(i+1)%26])
+			rightPos = rune(rotorInfo[rightRotor][0][(i+1)%26])
 			break
 		}
 	}
 	// if right hit the turnover point
-	if newRightPos == rune(rotorInfo[rightRotor][1][0]) {
+	if rightPos == rune(rotorInfo[rightRotor][1][0]) {
 		for i, c := range rotorInfo[middleRotor][0] {
 			if c == middlePos {
-				newMiddlePos = rune(rotorInfo[middleRotor][0][(i+1)%26])
+				middlePos = rune(rotorInfo[middleRotor][0][(i+1)%26])
 				break
 			}
 		}
 	}
 	// if middle hit a turnover point
-	if newMiddlePos == rune(rotorInfo[middleRotor][1][0]) {
+	if middlePos == rune(rotorInfo[middleRotor][1][0]) {
 		for i, c := range rotorInfo[leftRotor][0] {
 			if c == leftPos {
-				newLeftPos = rune(rotorInfo[leftRotor][0][(i+1)%26])
+				leftPos = rune(rotorInfo[leftRotor][0][(i+1)%26])
 				break
 			}
 		}
 	}
-	var newPos = []rune{}
-	newPos = append(newPos, newLeftPos, newMiddlePos, newRightPos)
+	var newPos []rune
+	newPos = append(newPos, leftPos, middlePos, rightPos)
 	return newPos
+}
+
+// practically to get where the letter is on a rotator. "Where is `pos` in my `str`?
+func index(pos rune, str string) rune {
+	for i, c := range str {
+		if c == pos {
+			return rune(i)
+		}
+	}
+	return -1
+}
+
+// this makes me cringe. but yes. it does work.
+func encryptChar(char rune, rotors []string, pos []rune) (rune, []rune) {
+	// TODO this does not use the plugboard in the encryption
+
+	// before a character goes through, the rotators step
+	pos = stepRotors(rotors, pos)
+
+	//charIdx := char - 65
+
+	return char, pos
+
+	//// friendly names!
+	//leftRotor := rotors[0]
+	//middleRotor := rotors[1]
+	//rightRotor := rotors[2]
+	//
+	//leftPos := index(pos[0], rotorInfo[leftRotor][0])
+	//middlePos := index(pos[1], rotorInfo[middleRotor][0])
+	//rightPos := index(pos[2], rotorInfo[rightRotor][0])
+	//
+	//charIdx := char - 65
+	//// right rotor
+	////char = rune(rotorInfo[rightRotor][0][(charIdx+rightPos)%26])
+	////charIdx = index(char, rotorInfo[rightRotor][0])
+	////fmt.Printf("after right: %c\n", char)
+	//charIdx = (charIdx + rightPos) % 26
+	//
+	//// middle rotor
+	////char = rune(rotorInfo[middleRotor][0][(charIdx+middlePos)%26])
+	////charIdx = index(char, rotorInfo[middleRotor][0])
+	////fmt.Printf("after middle: %c\n", char)
+	//charIdx = (charIdx + middlePos) % 26
+	//
+	//// left rotor
+	////char = rune(rotorInfo[leftRotor][0][(charIdx+leftPos)%26])
+	////charIdx = index(char, rotorInfo[leftRotor][0])
+	////fmt.Printf("after left: %c\n", char)
+	//charIdx = (charIdx + leftPos) % 26
+	//
+	//// reflector
+	//char = reflector(char)
+	//charIdx = index(char, "YRUHQSLDPXNGOKMIEBFZCWVJAT") // hardcoded for the reflector
+	////fmt.Printf("reflector: %c\n", char)
+	//
+	//// left rotor
+	////char = rune(rotorInfo[leftRotor][0][(charIdx+leftPos)%26])
+	////charIdx = index(char, rotorInfo[leftRotor][0])
+	////fmt.Printf("left: %c\n", char)
+	//charIdx = (charIdx + leftPos) % 26
+	//
+	//// middle rotor
+	////char = rune(rotorInfo[middleRotor][0][(charIdx+middlePos)%26])
+	////charIdx = index(char, rotorInfo[middleRotor][0])
+	////fmt.Printf("middle: %c\n", char)
+	//charIdx = (charIdx + middlePos) % 26
+	//
+	//// right rotor
+	////char = rune(rotorInfo[rightRotor][0][(charIdx+rightPos)%26])
+	////fmt.Printf("right: %c\n", char)
+	//charIdx = (charIdx + rightPos) % 26
+	//char = charIdx + 65
+	//fmt.Printf("final: %c\n", char)
 }
 
 func main() {
@@ -186,7 +259,6 @@ func main() {
 	}
 
 	start := 0 //solution: start = 29, end = 47 (inclusive)
-	var position = []rune{'B', 'B', 'I'}
 	for start+len(crib) < len(cipherText) {
 		// find a possible crib and create the corresponding menu
 		cribStart, cribEnd := findCrib(start, cipherText, crib)
@@ -206,8 +278,14 @@ func main() {
 		// - check all rotator positions (which ones, what order, starting order)
 
 		// example code for stepping rotors. Works!
+		var position = []rune{'B', 'A', 'J'}
+		fmt.Println(position)
 		newPosition := stepRotors([]string{"I", "IV", "III"}, position)
 		fmt.Println(newPosition) // to make newPosition used
+
+		// example code for encrypting char
+		char := 'C'
+		char, position = encryptChar(char, []string{"I", "IV", "III"}, position)
 
 		// - for all guesses (the alphabet) with input letter
 		// - for all paths, break at contradictions (remember them for shortcuts later?)
@@ -222,6 +300,7 @@ func main() {
 		// then we found the plugboard settings and the rotator arrangement at the same time
 		// (previous lines will continue the loop before getting this far)
 		start = cribStart + 1
+		break
 	}
 
 	// go through the cipher text and decode using the plugboard/rotator settings/reflector
