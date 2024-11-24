@@ -115,24 +115,24 @@ func stepRotors(rotors []string, pos []rune) []rune {
 
 	// TODO confirm these are the right turnovers??? From OtherBombCode/rotors.txt. Also assuming moving B->R is what causes turnover in rotor I
 	rotorInfo := map[string][]string{
-		"I":   []string{"EKMFLGDQVZNTOWYHXUSPAIBRCJ", "R"},
-		"II":  []string{"AJDKSIRUXBLHWTMCQGZNPYFVOE", "F"},
-		"III": []string{"BDFHJLCPRTXVZNYEIWGAKMUSQO", "W"},
-		"IV":  []string{"ESOVPZJAYQUIRHXLNFTGKDCMWB", "K"},
-		"V":   []string{"VZBRGITYUPSDNHLXAWMJQOFECK", "A"},
+		"I":   {"EKMFLGDQVZNTOWYHXUSPAIBRCJ", "R"},
+		"II":  {"AJDKSIRUXBLHWTMCQGZNPYFVOE", "F"},
+		"III": {"BDFHJLCPRTXVZNYEIWGAKMUSQO", "W"},
+		"IV":  {"ESOVPZJAYQUIRHXLNFTGKDCMWB", "K"},
+		"V":   {"VZBRGITYUPSDNHLXAWMJQOFECK", "A"},
 	}
 
-	leftPos := rune(pos[0])
-	middlePos := rune(pos[1])
-	rightPos := rune(pos[2])
+	leftPos := pos[0]
+	middlePos := pos[1]
+	rightPos := pos[2]
 
 	leftRotor := rotors[0]
 	middleRotor := rotors[1]
 	rightRotor := rotors[2]
 
-	var newLeftPos = leftPos
-	var newMiddlePos = middlePos
-	var newRightPos = rightPos
+	newLeftPos := leftPos
+	newMiddlePos := middlePos
+	newRightPos := rightPos
 
 	// stepping rotors only advances the right rotor, unless it crosses a turning point
 	for i, c := range rotorInfo[rightRotor][0] {
@@ -164,10 +164,6 @@ func stepRotors(rotors []string, pos []rune) []rune {
 	return newPos
 }
 
-func encryptChar() {
-	//stepRotors()
-}
-
 func main() {
 	// in the final product, cipherText and crib won't be pre-initialized,
 	// remove the surrounding if block
@@ -189,10 +185,8 @@ func main() {
 		}
 	}
 
-	fmt.Println("Cipher Text: ", cipherText)
-	fmt.Println("Crib: ", crib)
-
 	start := 0 //solution: start = 29, end = 47 (inclusive)
+	var position = []rune{'B', 'B', 'I'}
 	for start+len(crib) < len(cipherText) {
 		// find a possible crib and create the corresponding menu
 		cribStart, cribEnd := findCrib(start, cipherText, crib)
@@ -203,21 +197,18 @@ func main() {
 		cipherCrib := cipherText[cribStart : cribEnd+1] // +1 because findCrib() returned inclusive values?
 
 		menu := createMenu(crib, cipherCrib)
-		fmt.Println(menu) // so that the go compiler doesn't get mad at us not using menu
 
-		// find paths
+		// TODO find paths -- this isn't implemented yet
 		paths := findPaths(menu)
 		fmt.Println(paths)
 
-		// example code for stepping rotors. Works!
-		// TODO put this in a smarter spot
-		var position = []rune{'B', 'B', 'I'}
-		fmt.Println(position)
-		newPosition := stepRotors([]string{"I", "IV", "III"}, position)
-		fmt.Println(newPosition)
-
 		// runBombe() - returns possible plugboards with associated rotator settings
 		// - check all rotator positions (which ones, what order, starting order)
+
+		// example code for stepping rotors. Works!
+		newPosition := stepRotors([]string{"I", "IV", "III"}, position)
+		fmt.Println(newPosition) // to make newPosition used
+
 		// - for all guesses (the alphabet) with input letter
 		// - for all paths, break at contradictions (remember them for shortcuts later?)
 		// - send through enigma rotators/reflector -> write the rotators to step through to the index
