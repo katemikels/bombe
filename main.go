@@ -1,6 +1,26 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
+
+var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+// create an array of all possible rotor positions
+
+func rotorPositions() []string {
+	positions := make([]string, 0)
+	for i := 0; i < len(alphabet); i++ {
+		for j := 0; j < len(alphabet); j++ {
+			for k := 0; k < len(alphabet); k++ {
+				position := string(alphabet[i]) + string(alphabet[j]) + string(alphabet[k])
+				positions = append(positions, position)
+			}
+		}
+	}
+	return positions
+}
 
 // sketch of how to do the reflector.
 // a switch statement would take a lot more code and writing,
@@ -43,7 +63,7 @@ func findCrib(start int, text string, crib string) (int, int) {
 
 func createMenu(crib string, cipherCrib string) map[rune]map[rune]int {
 	menu := make(map[rune]map[rune]int)
-	fmt.Println(cipherCrib)
+	//fmt.Println(cipherCrib)
 
 	for i, cipherLetterInt := range cipherCrib {
 		cipherLetter := cipherLetterInt
@@ -71,6 +91,59 @@ func createMenu(crib string, cipherCrib string) map[rune]map[rune]int {
 		// if the combo is already in the menu, we don't add anything or change the index vals
 	}
 	return menu
+}
+
+// DFS to find paths in the menu
+func searchForPaths(letter rune, menu map[rune]map[rune]int, current rune, path []rune, paths *[]string) {
+	// for all the letters associated with the current letter
+	for new := range menu[current] {
+		// if the new letter is the same as the start (and the path is longer than two) then we found a loop
+		if new == letter && len(path) > 2 {
+			// copy
+			pathCopy := make([]rune, len(path))
+			copy(pathCopy, path)
+			pathCopy = append(pathCopy, letter)
+			// add to list
+			*paths = append(*paths, string(pathCopy))
+			continue
+		}
+
+		// if already in the path and not start, move on - not helpful
+		if slices.Contains(path, new) {
+			continue
+		}
+
+		// copy
+		pathCopy := make([]rune, len(path))
+		copy(pathCopy, path)
+		pathCopy = append(pathCopy, new) // Changed from letter to new
+
+		// recursive call
+		searchForPaths(letter, menu, new, pathCopy, paths)
+	}
+}
+
+func runBombe(paths string, inputLetter string, menu map[rune]map[rune]int) {
+	// - check all rotator positions (which ones, what order, starting order)
+	// this does not currently consider the different possible rotors
+	rotorPositions := rotorPositions()
+
+	for _, rotor := range rotorPositions {
+		// - for all guesses (the alphabet) with input letter
+		for _, guess := range alphabet {
+			// - for all paths, break at contradictions (remember them for shortcuts later?)
+			for _, path := range paths {
+				// - send through enigma rotators/reflector -> write the rotators to step through to the index
+				// - no contradictions, is a possibility (check other paths?)
+				// add all possibilities to list of all possibilities for all possible cribs
+
+				// keep things happy :)
+				fmt.Println(rotor)
+				fmt.Println(guess)
+				fmt.Println(path)
+			}
+		}
+	}
 }
 
 func main() {
@@ -108,17 +181,23 @@ func main() {
 		cipherCrib := cipherText[cribStart : cribEnd+1] // +1 because findCrib() returned inclusive values?
 
 		menu := createMenu(crib, cipherCrib)
-		fmt.Println(menu) // so that the go compiler doesn't get mad at us not using menu
+		//fmt.Println(menu) // so that the go compiler doesn't get mad at us not using menu
 
 		// - decide on paths
-		// - decide on input letter (start of loop path)
-		// runBombe() - returns possible plugboards with associated rotator settings
-		// - check all rotator positions (which ones, what order, starting order)
-		// - for all guesses (the alphabet) with input letter
-		// - for all paths, break at contradictions (remember them for shortcuts later?)
-		// - send through enigma rotators/reflector -> write the rotators to step through to the index
-		// - no contradictions, is a possibility (check other paths?)
-		// add all possibilities to list of all possibilities for all possible cribs
+		var paths []string
+		for letter := range menu {
+			path := []rune{letter}
+			searchForPaths(letter, menu, letter, path, &paths)
+		}
+
+		fmt.Println("paths: ", paths)
+
+		// paths found
+		if len(paths) != 0 {
+			// - decide on input letter (start of loop path)
+			//runBombe(paths, inputLetter, menu) // update as parameters change and given output
+		}
+
 		// after the loop, checkCipherText() to check our possibilities against the entire message
 		// prints out decrypted ciphertext
 		// command line utility????
