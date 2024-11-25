@@ -8,7 +8,6 @@ import (
 var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 // create an array of all possible rotor positions
-
 func rotorPositions() []string {
 	positions := make([]string, 0)
 	for i := 0; i < len(alphabet); i++ {
@@ -116,14 +115,14 @@ func searchForPaths(letter rune, menu map[rune]map[rune]int, current rune, path 
 		// copy
 		pathCopy := make([]rune, len(path))
 		copy(pathCopy, path)
-		pathCopy = append(pathCopy, new) // Changed from letter to new
+		pathCopy = append(pathCopy, new)
 
 		// recursive call
 		searchForPaths(letter, menu, new, pathCopy, paths)
 	}
 }
 
-func runBombe(paths string, inputLetter string, menu map[rune]map[rune]int) {
+func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) {
 	// - check all rotator positions (which ones, what order, starting order)
 	// this does not currently consider the different possible rotors
 	rotorPositions := rotorPositions()
@@ -132,15 +131,35 @@ func runBombe(paths string, inputLetter string, menu map[rune]map[rune]int) {
 		// - for all guesses (the alphabet) with input letter
 		for _, guess := range alphabet {
 			// - for all paths, break at contradictions (remember them for shortcuts later?)
-			for _, path := range paths {
-				// - send through enigma rotators/reflector -> write the rotators to step through to the index
-				// - no contradictions, is a possibility (check other paths?)
-				// add all possibilities to list of all possibilities for all possible cribs
+			// set up first plugboard pair guess
+			plugboard := make(map[rune]rune)
+			plugboard[inputLetter] = guess
+			plugboard[guess] = inputLetter
 
+			for _, path := range paths {
+				// for each letter in the path
+				for i := 0; i < len(path)-1; i++ {
+					letter := rune(path[i])
+					cribLetter := rune(path[i+1])
+					cribPosition := menu[letter][cribLetter]
+					fmt.Println("crib position: ", cribPosition)
+
+					// TODO: step rotators to cribPosition
+
+					// check to see if the letter we are looking at is in the plugboard
+					plugboardLetter, exists := plugboard[letter]
+					if exists {
+						fmt.Println("plugboard letter: ", plugboardLetter)
+						// TODO: send plugboardLetter to encrypt
+					}
+					// check for contradictions
+
+					// add all possibilities to list of all possibilities for all possible cribs
+				}
 				// keep things happy :)
 				fmt.Println(rotor)
 				fmt.Println(guess)
-				fmt.Println(path)
+				fmt.Println(path[0])
 			}
 		}
 	}
@@ -190,12 +209,12 @@ func main() {
 			searchForPaths(letter, menu, letter, path, &paths)
 		}
 
-		fmt.Println("paths: ", paths)
-
 		// paths found
 		if len(paths) != 0 {
-			// - decide on input letter (start of loop path)
-			//runBombe(paths, inputLetter, menu) // update as parameters change and given output
+			fmt.Println("paths: ", paths)
+			fmt.Println(paths[0][0]) // first letter of first path
+			inputLetter := rune(paths[0][0])
+			runBombe(paths, inputLetter, menu) // update as parameters change and given output
 		}
 
 		// after the loop, checkCipherText() to check our possibilities against the entire message
