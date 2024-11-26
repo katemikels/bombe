@@ -7,7 +7,7 @@ import (
 
 var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-// TODO confirm these are the right turnovers??? From OtherBombCode/rotors.txt. Also assuming moving B->R is what causes turnover in rotor I
+// TODO confirm these are the right turnovers??? From OtherBombCode/rotors.txt.
 var rotorInfo = map[string][]string{
 	"I":   {"EKMFLGDQVZNTOWYHXUSPAIBRCJ", "R"},
 	"II":  {"AJDKSIRUXBLHWTMCQGZNPYFVOE", "F"},
@@ -24,7 +24,7 @@ type rotorStruct struct {
 	wiringInverse map[rune]rune
 }
 
-// practically to get where the letter is on a rotator. "Where is `pos` in my `str`?
+// Go doesn't have a function for this
 func index(pos rune, str string) rune {
 	for i, c := range str {
 		if c == pos {
@@ -50,12 +50,12 @@ func makeWiring(r *rotorStruct) {
 }
 
 // create an array of all possible rotor positions
-func rotorPositions() []string {
-	positions := make([]string, 0)
+func rotorPositions() [][]rune {
+	positions := make([][]rune, 0)
 	for i := 0; i < len(alphabet); i++ {
 		for j := 0; j < len(alphabet); j++ {
 			for k := 0; k < len(alphabet); k++ {
-				position := string(alphabet[i]) + string(alphabet[j]) + string(alphabet[k])
+				position := []rune{rune(alphabet[i]), rune(alphabet[j]), rune(alphabet[k])}
 				positions = append(positions, position)
 			}
 		}
@@ -119,14 +119,13 @@ func createMenu(crib string, cipherCrib string) map[rune]map[rune]int {
 
 func stepRotors(rotors []rotorStruct, pos []rune) []rune {
 	// rotors: list of 3 rotor structs, the left, middle, and right rotor names respectively
-	// pos: the current letter visible on each rotor. Ex: "ABC" means left rotor is on A
+	// pos: the current letter offset on each rotor. Ex: "ABC" means left rotor will start on A
 
 	// use inverse to loop right rotor first (backwards from the written order)
 	var rotorsInverse []rotorStruct
 	for i := len(rotors) - 1; i >= 0; i-- {
 		rotorsInverse = append(rotorsInverse, rotors[i])
 	}
-
 	var posInverse []rune
 	for i := len(pos) - 1; i >= 0; i-- {
 		posInverse = append(posInverse, pos[i])
@@ -148,9 +147,7 @@ func stepRotors(rotors []rotorStruct, pos []rune) []rune {
 }
 
 // this makes me cringe. but yes. it does work.
-func encryptChar(char rune, rotors []rotorStruct, pos []rune) (rune, []rune) {
-	// TODO this does not use the plugboard in the encryption
-
+func encryptChar(char rune, rotors []rotorStruct, pos []rune) rune {
 	// before a character goes through, the rotators step
 	pos = stepRotors(rotors, pos)
 
@@ -159,7 +156,6 @@ func encryptChar(char rune, rotors []rotorStruct, pos []rune) (rune, []rune) {
 	for i := len(rotors) - 1; i >= 0; i-- {
 		rotorsInverse = append(rotorsInverse, rotors[i])
 	}
-
 	var posInverse []rune
 	for i := len(pos) - 1; i >= 0; i-- {
 		posInverse = append(posInverse, pos[i])
@@ -172,7 +168,6 @@ func encryptChar(char rune, rotors []rotorStruct, pos []rune) (rune, []rune) {
 		offset := index(pos[i], rotors[i].letters)
 		offsets = append(offsets, offset)
 	}
-
 	var offsetsInverse []rune
 	for i := len(offsets) - 1; i >= 0; i-- {
 		offsetsInverse = append(offsetsInverse, offsets[i])
@@ -183,7 +178,7 @@ func encryptChar(char rune, rotors []rotorStruct, pos []rune) (rune, []rune) {
 
 	// through rotors right -> left
 	for i, rotor := range rotorsInverse {
-		// I gotta be honest, I copied this idea straight from enigma.py
+		// I gotta be honest, I took this idea from enigma.py
 		// I never would have thought it out like this without it.
 		charIdx = (charIdx + offsetsInverse[i]) % 26 // adjust for rotor offset
 		charIdx = rotor.wiring[charIdx]              // wiring gives us the alphabet idx of the char on the rotor
@@ -199,11 +194,11 @@ func encryptChar(char rune, rotors []rotorStruct, pos []rune) (rune, []rune) {
 	for i, rotor := range rotors {
 		charIdx = (charIdx + offsets[i]) % 26 // adjust for rotor offset
 		charIdx = rotor.wiring[charIdx]
-		//charIdx = (charIdx - offsets[i]) % 26 // back out of rotor offset... why???
+		//charIdx = (charIdx - offsets[i]) % 26 // carried from enigma.py... I don't know what it's supposed to do
 	}
 
 	char = rune(alphabet[charIdx]) // back to ASCII
-	return char, pos
+	return char
 }
 
 // DFS to find paths in the menu
@@ -238,9 +233,8 @@ func searchForPaths(letter rune, menu map[rune]map[rune]int, current rune, path 
 }
 
 func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) {
-	// hardcoded rotors?
 	var rotors []rotorStruct
-	rotorNames := []string{"I", "IV", "III"}
+	rotorNames := []string{"I", "IV", "III"} // TODO hardcoded rotors?
 	for _, name := range rotorNames {
 		var r rotorStruct
 		r.name = name
@@ -252,9 +246,10 @@ func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) {
 
 	// - check all rotator positions (which ones, what order, starting order)
 	// this does not currently consider the different possible rotors
-	rotorPositions := rotorPositions()
+	rotorPositionsList := rotorPositions()
+	var possibilities []map[rune]rune // list of possible plugboard solutions
 
-	for _, rotor := range rotorPositions {
+	for _, rotorPosition := range rotorPositionsList {
 		// - for all guesses (the alphabet) with input letter
 		for _, guess := range alphabet {
 			// - for all paths, break at contradictions (remember them for shortcuts later?)
@@ -263,19 +258,8 @@ func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) {
 			plugboard[inputLetter] = guess
 			plugboard[guess] = inputLetter
 
+			contradiction := false
 			for _, path := range paths {
-				// - send through enigma rotators/reflector -> write the rotators to step through to the index
-
-				// example code for stepping rotors
-				var position = []rune{'B', 'A', 'I'}
-				fmt.Println(position)
-				//newPosition := stepRotors(rotors, position)
-				//fmt.Println(newPosition) // to make newPosition used
-
-				// example code for encrypting char -- I thiiiiiiiinnkkkk the logic is right?? I'm not really sure. But if my understanding is right, then it works.
-				char := 'C'
-				char, position = encryptChar(char, rotors, position)
-
 				// - no contradictions, is a possibility (check other paths?)
 				// add all possibilities to list of all possibilities for all possible cribs
 
@@ -286,31 +270,53 @@ func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) {
 					cribPosition := menu[letter][cribLetter]
 					fmt.Println("crib position: ", cribPosition)
 
-					// TODO: step rotators to cribPosition
-
-					// check to see if the letter we are looking at is in the plugboard
-					plugboardLetter, exists := plugboard[letter]
-					if exists {
-						fmt.Println("plugboard letter: ", plugboardLetter)
-						// TODO: send plugboardLetter to encrypt
+					// - send through enigma rotators/reflector -> write the rotators to step through to the index
+					// step rotators to cribPosition
+					for j := 0; j < cribPosition; j++ {
+						// example code for stepping rotors
+						fmt.Println(rotorPosition)
+						rotorPosition = stepRotors(rotors, rotorPosition)
+						fmt.Println(rotorPosition)
 					}
-					// check for contradictions
 
-					// add all possibilities to list of all possibilities for all possible cribs
+					// check to see if the letter we are looking at is in the plugboard, else we can't do anything?
+					rotorIn, exists := plugboard[letter]
+					//var rotorInput rune
+					if exists {
+						fmt.Println("from plugboard, what is going into rotors: ", rotorIn)
+						// I thiiiiiiiinnkkkk the logic is right?? I'm not really sure.
+						rotorOut := encryptChar(rotorIn, rotors, rotorPosition)
+						fmt.Println("letter from rotors for plugboard: ", rotorOut)
+
+						if plugOut, ok := plugboard[rotorOut]; ok { // `exists` was giving multiple declaration warnings
+							fmt.Println("encryption result: ", plugOut)
+							// check for contradictions
+							if plugOut != cribLetter {
+								fmt.Println("CONTRADITCTION:", letter, "plugs to", plugOut, "and", cribLetter)
+								contradiction = true
+								break // Contradiction!! -- give up on this path... on this rotor position?? // TODO change how this breaks?
+							}
+						} else { // assume that we plug to the correct next location
+							// letter --plug--> guess --rotors--> rotorOut --plug--> cribLetter... I think?
+							plugboard[rotorOut] = cribLetter
+							plugboard[cribLetter] = rotorOut
+							fmt.Println("encryption result: ", cribLetter)
+						}
+					}
 				}
-				// keep things happy :)
-				fmt.Println(rotor)
-				fmt.Println(guess)
-				fmt.Println(path[0])
+			}
+			// add all possibilities to list of all possibilities for all possible cribs
+			if !contradiction {
+				possibilities = append(possibilities, plugboard)
 			}
 		}
-	}
+	} // return possibilities?
 }
 
 func main() {
 	// in the final product, cipherText and crib won't be pre-initialized,
 	// remove the surrounding if block
-	cipherText := "zjevjibowhpsvdupnvyyzlseqvgfkfxpqtxqoxhydaydprfgtnqxmcsayakszezmaxwpuoxtetffguvszkaikknfhdfgwopiisytteivnlyde"
+	cipherText := "ZJEVJIBOWHPSVDUPNVYYZLSEQVGFKFXPQTXQOXHYDAYDPRFGTNQXMCSAYAKSZEZMAXWPUOXTETFFGUVSZKAIKKNFHDFGWOPIISYTTEIVNLYDE"
 	//var cipherText string
 	if cipherText == "" {
 		_, err := fmt.Scanln(&cipherText)
@@ -319,7 +325,7 @@ func main() {
 		}
 	}
 
-	crib := "christmasdaywithyou"
+	crib := "CHRISTMASDAYWITHYOU"
 	// var crib string
 	if crib == "" {
 		_, err := fmt.Scanln(&cipherText)
