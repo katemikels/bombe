@@ -230,14 +230,14 @@ func searchForPaths(letter rune, menu map[rune]map[rune]int, current rune, path 
 		// copy
 		pathCopy := make([]rune, len(path))
 		copy(pathCopy, path)
-		pathCopy = append(pathCopy, new) // Changed from letter to new
+		pathCopy = append(pathCopy, new)
 
 		// recursive call
 		searchForPaths(letter, menu, new, pathCopy, paths)
 	}
 }
 
-func runBombe(paths []string, inputLetter string, menu map[rune]map[rune]int) {
+func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) {
 	// hardcoded rotors?
 	var rotors []rotorStruct
 	rotorNames := []string{"I", "IV", "III"}
@@ -258,6 +258,11 @@ func runBombe(paths []string, inputLetter string, menu map[rune]map[rune]int) {
 		// - for all guesses (the alphabet) with input letter
 		for _, guess := range alphabet {
 			// - for all paths, break at contradictions (remember them for shortcuts later?)
+			// set up first plugboard pair guess
+			plugboard := make(map[rune]rune)
+			plugboard[inputLetter] = guess
+			plugboard[guess] = inputLetter
+
 			for _, path := range paths {
 				// - send through enigma rotators/reflector -> write the rotators to step through to the index
 
@@ -274,10 +279,29 @@ func runBombe(paths []string, inputLetter string, menu map[rune]map[rune]int) {
 				// - no contradictions, is a possibility (check other paths?)
 				// add all possibilities to list of all possibilities for all possible cribs
 
+				// for each letter in the path
+				for i := 0; i < len(path)-1; i++ {
+					letter := rune(path[i])
+					cribLetter := rune(path[i+1])
+					cribPosition := menu[letter][cribLetter]
+					fmt.Println("crib position: ", cribPosition)
+
+					// TODO: step rotators to cribPosition
+
+					// check to see if the letter we are looking at is in the plugboard
+					plugboardLetter, exists := plugboard[letter]
+					if exists {
+						fmt.Println("plugboard letter: ", plugboardLetter)
+						// TODO: send plugboardLetter to encrypt
+					}
+					// check for contradictions
+
+					// add all possibilities to list of all possibilities for all possible cribs
+				}
 				// keep things happy :)
 				fmt.Println(rotor)
 				fmt.Println(guess)
-				fmt.Println(path)
+				fmt.Println(path[0])
 			}
 		}
 	}
@@ -327,13 +351,12 @@ func main() {
 			searchForPaths(letter, menu, letter, path, &paths)
 		}
 
-		fmt.Println("paths: ", paths)
-
 		// paths found
 		if len(paths) != 0 {
-			// - decide on input letter (start of loop path)
-			//runBombe(paths, inputLetter, menu) // update as parameters change and given output
-			runBombe(paths, "A", menu)
+			fmt.Println("paths: ", paths)
+			fmt.Println(paths[0][0]) // first letter of first path
+			inputLetter := rune(paths[0][0])
+			runBombe(paths, inputLetter, menu) // update as parameters change and given output
 		}
 
 		// after the loop, checkCipherText() to check our possibilities against the entire message
@@ -344,7 +367,6 @@ func main() {
 		// then we found the plugboard settings and the rotator arrangement at the same time
 		// (previous lines will continue the loop before getting this far)
 		start = cribStart + 1
-		break
 	}
 
 	// go through the cipher text and decode using the plugboard/rotator settings/reflector
