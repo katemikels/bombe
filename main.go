@@ -260,6 +260,9 @@ func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) {
 
 			contradiction := false
 			for _, path := range paths {
+				if contradiction {
+					break
+				}
 				// - no contradictions, is a possibility (check other paths?)
 				// add all possibilities to list of all possibilities for all possible cribs
 
@@ -294,7 +297,7 @@ func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) {
 							if plugOut != cribLetter {
 								fmt.Println("CONTRADITCTION:", letter, "plugs to", plugOut, "and", cribLetter)
 								contradiction = true
-								break // Contradiction!! -- give up on this path... on this rotor position?? // TODO change how this breaks?
+								break // Contradiction!! -- give up on this path... on this guess??
 							}
 						} else { // assume that we plug to the correct next location
 							// letter --plug--> guess --rotors--> rotorOut --plug--> cribLetter... I think?
