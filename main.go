@@ -204,10 +204,9 @@ func encryptChar(char rune, rotors []rotorStruct, pos []rune) rune {
 // DFS to find paths in the menu
 func searchForPaths(letter rune, menu map[rune]map[rune]int, current rune, path []rune, paths *[]string) {
 	// for all the letters associated with the current letter
-	// TODO rename `new` bc new is a keyword
-	for new := range menu[current] {
+	for newLetter := range menu[current] {
 		// if the new letter is the same as the start (and the path is longer than two) then we found a loop
-		if new == letter && len(path) > 2 {
+		if newLetter == letter && len(path) > 2 {
 			// copy
 			pathCopy := make([]rune, len(path))
 			copy(pathCopy, path)
@@ -218,17 +217,17 @@ func searchForPaths(letter rune, menu map[rune]map[rune]int, current rune, path 
 		}
 
 		// if already in the path and not start, move on - not helpful
-		if slices.Contains(path, new) {
+		if slices.Contains(path, newLetter) {
 			continue
 		}
 
 		// copy
 		pathCopy := make([]rune, len(path))
 		copy(pathCopy, path)
-		pathCopy = append(pathCopy, new)
+		pathCopy = append(pathCopy, newLetter)
 
 		// recursive call
-		searchForPaths(letter, menu, new, pathCopy, paths)
+		searchForPaths(letter, menu, newLetter, pathCopy, paths)
 	}
 }
 
