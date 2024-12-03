@@ -34,6 +34,15 @@ func index(pos rune, str string) rune {
 	return -1
 }
 
+func contains(letters []rune, guess rune) bool {
+	for _, l := range letters {
+		if l == guess {
+			return true
+		}
+	}
+	return false
+}
+
 func makeWiring(r *rotorStruct) {
 	wiring := make(map[rune]rune)
 	wiringInverse := make(map[rune]rune)
@@ -231,7 +240,7 @@ func searchForPaths(letter rune, menu map[rune]map[rune]int, current rune, path 
 	}
 }
 
-func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) {
+func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) []map[rune]rune {
 	var rotors []rotorStruct
 	rotorNames := []string{"I", "IV", "III"} // TODO hardcoded rotors?
 	for _, name := range rotorNames {
@@ -250,18 +259,27 @@ func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) {
 
 	for _, rotorPosition := range rotorPositionsList {
 		// - for all guesses (the alphabet) with input letter
+		var impossibilities map[rune][]rune
+
 		for _, guess := range alphabet {
 			// - for all paths, break at contradictions (remember them for shortcuts later?)
 			// set up first plugboard pair guess
 			plugboard := make(map[rune]rune)
 			plugboard[inputLetter] = guess
 			plugboard[guess] = inputLetter
-
 			contradiction := false
+			if _, ok := impossibilities[guess]; ok { // if the letter is in impossibilities, don't even think about it
+				if contains(impossibilities[inputLetter], guess) {
+					contradiction = true
+					break
+				}
+			}
+
 			for _, path := range paths {
 				if contradiction {
 					break
 				}
+
 				// - no contradictions, is a possibility (check other paths?)
 				// add all possibilities to list of all possibilities for all possible cribs
 
@@ -296,10 +314,29 @@ func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) {
 							if plugOut != cribLetter {
 								fmt.Println("CONTRADITCTION:", letter, "plugs to", plugOut, "and", cribLetter)
 								contradiction = true
+								impossibilities[cribLetter] = append(impossibilities[cribLetter], guess)
+								impossibilities[guess] = append(impossibilities[plugOut], cribLetter)
 								break // Contradiction!! -- give up on this path... on this guess??
 							}
 						} else { // assume that we plug to the correct next location
 							// letter --plug--> guess --rotors--> rotorOut --plug--> cribLetter... I think?
+							if _, plugExists := plugboard[cribLetter]; plugExists {
+								fmt.Println("CONTRADITCTION:", letter, "plugs to", plugOut, "and", cribLetter) //TODO update contradiction statements
+								contradiction = true
+								impossibilities[cribLetter] = append(impossibilities[cribLetter], guess)
+								impossibilities[guess] = append(impossibilities[plugOut], cribLetter)
+								break
+							} else {
+								if impossiblePairings, outExists := impossibilities[cribLetter]; outExists {
+									if contains(impossiblePairings, rotorOut) {
+										fmt.Println("CONTRADITCTION:", letter, "plugs to", plugOut, "and", cribLetter)
+										contradiction = true
+										impossibilities[cribLetter] = append(impossibilities[cribLetter], guess)
+										impossibilities[guess] = append(impossibilities[plugOut], cribLetter)
+										break
+									}
+								}
+							}
 							plugboard[rotorOut] = cribLetter
 							plugboard[cribLetter] = rotorOut
 							fmt.Println("encryption result: ", cribLetter)
@@ -312,7 +349,8 @@ func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) {
 				possibilities = append(possibilities, plugboard)
 			}
 		}
-	} // return possibilities?
+	}
+	return possibilities
 }
 
 func main() {
@@ -364,7 +402,10 @@ func main() {
 			fmt.Println("paths: ", paths)
 			fmt.Println(paths[0][0]) // first letter of first path
 			inputLetter := rune(paths[0][0])
-			runBombe(paths, inputLetter, menu) // update as parameters change and given output
+			possibilities := runBombe(paths, inputLetter, menu) // update as parameters change and given output
+			for possibility := range possibilities {
+				fmt.Println(possibility)
+			}
 		}
 
 		// after the loop, checkCipherText() to check our possibilities against the entire message
