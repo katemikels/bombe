@@ -43,6 +43,33 @@ func contains(letters []rune, guess rune) bool {
 	return false
 }
 
+func containsInMap(letters map[rune]rune, guess rune) bool {
+	for _, l := range letters {
+		if l == guess {
+			return true
+		}
+	}
+	return false
+}
+
+func containsInList(letters []rune, guess rune) bool {
+	for _, l := range letters {
+		if l == guess {
+			return true
+		}
+	}
+	return false
+}
+
+func containsContradictions(letters map[rune][]rune, guess rune) bool {
+	for k, _ := range letters {
+		if k == guess {
+			return true
+		}
+	}
+	return false
+}
+
 func makeWiring(r *rotorStruct) {
 	wiring := make(map[rune]rune)
 	wiringInverse := make(map[rune]rune)
@@ -353,6 +380,152 @@ func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) []ma
 	return possibilities
 }
 
+func newRunBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) []map[rune]rune {
+	var rotors []rotorStruct
+	rotorNames := []string{"I", "IV", "III"} // TODO hardcoded rotors?
+	for _, name := range rotorNames {
+		var r rotorStruct
+		r.name = name
+		r.letters = rotorInfo[name][0]
+		r.turnover = rotorInfo[name][1]
+		makeWiring(&r)
+		rotors = append(rotors, r)
+	}
+
+	// - check all rotator positions (which ones, what order, starting order)
+	// this does not currently consider the different possible rotors
+	rotorPositionsList := rotorPositions()
+	var possibilities []map[rune]rune // list of possible plugboard solutions
+
+	// for all rotor positions
+	for _, rotorPosition := range rotorPositionsList {
+
+		// map of contradictions for the rotor position
+		contradictions := make(map[rune][]rune)
+
+		// for all possible guesses in the alphabet
+		for _, guess := range alphabet {
+
+			// set up first plugboard pair guess
+			plugboard := make(map[rune]rune)
+			plugboard[inputLetter] = guess
+			plugboard[guess] = inputLetter
+			plugboardPossible := true // the plugboard is currently possible;
+			// if not possible, give up on guess
+
+			// for all paths
+			for _, path := range paths {
+				// for each letter in paths
+				for i := 0; i < len(path)-1; i++ {
+					// variables :)
+					currentLetter := rune(path[i])
+					//currentLetterConnections := menu[currentLetter]
+					nextLetter := rune(path[i+1])
+					//nextLetterConnections := menu[nextLetter]
+					stepsToRotorPos := menu[currentLetter][nextLetter]
+
+					// step rotors
+					for j := 0; j < stepsToRotorPos; j++ {
+						//fmt.Println(rotorPosition)
+						rotorPosition = stepRotors(rotors, rotorPosition)
+						//fmt.Println(rotorPosition)
+					}
+
+					// if currentLetter in plugboard, encrypt the plugboard of current letter
+					if containsInMap(plugboard, currentLetter) && plugboardPossible {
+						plugCurrentLetter := plugboard[currentLetter]
+						encryptedPlugCurrentLetter := encryptChar(plugCurrentLetter, rotors, rotorPosition)
+
+						// contradiction checking
+						if containsContradictions(contradictions, nextLetter) {
+							// if next letter is in our contradictions list, pull out the contradictions
+							nextLetterContradictions := contradictions[nextLetter]
+							if containsInList(nextLetterContradictions, encryptedPlugCurrentLetter) {
+								// TODO: write function to add plugboard to contradictions
+								plugboardPossible = false
+								// give up on this
+								break
+							}
+						}
+
+						if containsInMap(plugboard, nextLetter) {
+							if plugboard[nextLetter] == encryptedPlugCurrentLetter {
+								// found a loop that works - check other possible paths
+								break
+							} else { // otherwise there was some sort of contradiction
+								// TODO: add contradction of nextLetter and encryptedPlugCurrentLetter + whole plugboard
+								plugboardPossible = false
+								// give up on this
+								break
+							}
+						} else { // if not in plugboard, add
+							plugboard[nextLetter] = encryptedPlugCurrentLetter
+							plugboard[encryptedPlugCurrentLetter] = nextLetter
+						}
+					}
+				}
+				// if we have found that the plugboard no longer works, don't keep going
+				if plugboardPossible == false {
+					break
+				}
+			}
+			// if the plugboard is still possible, add to possibilities
+			if plugboardPossible {
+				// TODO: add to possibilites map thing
+			}
+		}
+	}
+	return possibilities
+}
+
+/*
+Run Bombe Pseudocode:
+
+for all rotor combos:
+	for all rotor positions:
+		create contradictions
+		for all guesses in alphabet
+			create plugboard
+			plugboardPossible = true
+			for all paths
+				for all letters in paths
+					// variables
+					currentLetter = path[i]
+					currentLetterConnections = menu[currentLetter]
+					nextLetter = path[i+1]
+					nextLetterConnections = menu[nextLetter]
+					stepsToRotorPos = offset from currentLetter to nextLetter in menu
+
+					stepRotors
+					encryptedLetter = encrypt currentLetter
+
+					// already contradictions
+					if nextLetter is in contradictions
+						if encryptedLetter is in contradictions
+							contradiction: add the contradiction and the entire plugboard to the contradictions list
+							plugboardPossible = false
+							break
+
+					// no contradictions
+					if nextLetter is in the plugboard
+						if plugboard[nextLetter] == encryptedLetter
+							path completed - no contradictions found, is possible`5
+						else (must be a contradiction)		// found new one
+							contradiction: add the contradiction and the entire plugboard to the contradictions list
+							plugboardPossible = false
+					else (not in plugboard)
+						add to plugboard
+
+				if not plugboardPossible (in for each letter in path loop)
+					break out of path loop because it isn't going to work
+
+			if plugboardPossible (in for all paths loop)
+				add to list of all possible plugboards
+
+outside of loops, should have list of all possible plugboards
+
+*/
+
 func main() {
 	// in the final product, cipherText and crib won't be pre-initialized,
 	// remove the surrounding if block
@@ -403,23 +576,22 @@ func main() {
 			fmt.Println(paths[0][0]) // first letter of first path
 			inputLetter := rune(paths[0][0])
 			possibilities := runBombe(paths, inputLetter, menu) // update as parameters change and given output
+			// TODO: call newRunBombe()
+
 			for possibility := range possibilities {
 				fmt.Println(possibility)
 			}
 		}
 
-		// after the loop, checkCipherText() to check our possibilities against the entire message
-		// prints out decrypted ciphertext
-		// command line utility????
+		// TODO: test possibilities to see if they work
+		/*
+			for each possibility, go through the characters in the cipher text, building up a decrypted string where we replace the letter we found
+			if we don't have the answer, then put a ? in the string
+		*/
+		// TODO: test code in general....
 
-		// if no errors come up and everything makes it into these two maps,
-		// then we found the plugboard settings and the rotator arrangement at the same time
-		// (previous lines will continue the loop before getting this far)
 		start = cribStart + 1
 	}
-
-	// go through the cipher text and decode using the plugboard/rotator settings/reflector
-	// mark letters with ? that we don't know (don't have plugboard settings for those letters)
 
 	// print possible solution
 	fmt.Println("Decrypted text: <DNE>")
