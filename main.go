@@ -44,8 +44,8 @@ func contains(letters []rune, guess rune) bool {
 }
 
 func containsInMap(letters map[rune]rune, guess rune) bool {
-	for _, l := range letters {
-		if l == guess {
+	for k, _ := range letters {
+		if k == guess {
 			return true
 		}
 	}
@@ -267,122 +267,134 @@ func searchForPaths(letter rune, menu map[rune]map[rune]int, current rune, path 
 	}
 }
 
-func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) []map[rune]rune {
-	var rotors []rotorStruct
-	rotorNames := []string{"I", "IV", "III"} // TODO hardcoded rotors?
-	for _, name := range rotorNames {
-		var r rotorStruct
-		r.name = name
-		r.letters = rotorInfo[name][0]
-		r.turnover = rotorInfo[name][1]
-		makeWiring(&r)
-		rotors = append(rotors, r)
+func addToContradictions(plugboard map[rune]rune, contradictions map[rune][]rune) map[rune][]rune {
+	for k, _ := range plugboard {
+		if _, ok := contradictions[k]; ok {
+			contradictions[k] = append(contradictions[k], plugboard[k])
+		} else {
+			contradictions[k] = []rune{k}
+		}
 	}
+	return contradictions
+}
 
-	// - check all rotator positions (which ones, what order, starting order)
-	// this does not currently consider the different possible rotors
-	rotorPositionsList := rotorPositions()
-	var possibilities []map[rune]rune // list of possible plugboard solutions
+/*
+	func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) []map[rune]rune {
+		var rotors []rotorStruct
+		rotorNames := []string{"I", "IV", "III"}
+		for _, name := range rotorNames {
+			var r rotorStruct
+			r.name = name
+			r.letters = rotorInfo[name][0]
+			r.turnover = rotorInfo[name][1]
+			makeWiring(&r)
+			rotors = append(rotors, r)
+		}
 
-	for _, rotorPosition := range rotorPositionsList {
-		// - for all guesses (the alphabet) with input letter
-		var impossibilities map[rune][]rune
+		// - check all rotator positions (which ones, what order, starting order)
+		// this does not currently consider the different possible rotors
+		rotorPositionsList := rotorPositions()
+		var possibilities []map[rune]rune // list of possible plugboard solutions
 
-		for _, guess := range alphabet {
-			// - for all paths, break at contradictions (remember them for shortcuts later?)
-			// set up first plugboard pair guess
-			plugboard := make(map[rune]rune)
-			plugboard[inputLetter] = guess
-			plugboard[guess] = inputLetter
-			contradiction := false
-			if _, ok := impossibilities[guess]; ok { // if the letter is in impossibilities, don't even think about it
-				if contains(impossibilities[inputLetter], guess) {
-					contradiction = true
-					break
+		for _, rotorPosition := range rotorPositionsList {
+			// - for all guesses (the alphabet) with input letter
+			var impossibilities map[rune][]rune
+
+			for _, guess := range alphabet {
+				// - for all paths, break at contradictions (remember them for shortcuts later?)
+				// set up first plugboard pair guess
+				plugboard := make(map[rune]rune)
+				plugboard[inputLetter] = guess
+				plugboard[guess] = inputLetter
+				contradiction := false
+				if _, ok := impossibilities[guess]; ok { // if the letter is in impossibilities, don't even think about it
+					if contains(impossibilities[inputLetter], guess) {
+						contradiction = true
+						break
+					}
 				}
-			}
 
-			for _, path := range paths {
-				if contradiction {
-					break
-				}
-
-				// - no contradictions, is a possibility (check other paths?)
-				// add all possibilities to list of all possibilities for all possible cribs
-
-				// for each letter in the path
-				for i := 0; i < len(path)-1; i++ {
-					letter := rune(path[i])
-					cribLetter := rune(path[i+1])
-					cribPosition := menu[letter][cribLetter]
-					fmt.Println("crib position: ", cribPosition)
-
-					// - send through enigma rotators/reflector -> write the rotators to step through to the index
-					// step rotators to cribPosition
-					for j := 0; j < cribPosition; j++ {
-						// example code for stepping rotors
-						fmt.Println(rotorPosition)
-						rotorPosition = stepRotors(rotors, rotorPosition)
-						fmt.Println(rotorPosition)
+				for _, path := range paths {
+					if contradiction {
+						break
 					}
 
-					// check to see if the letter we are looking at is in the plugboard, else we can't do anything?
-					rotorIn, exists := plugboard[letter]
-					//var rotorInput rune
-					if exists {
-						fmt.Println("from plugboard, what is going into rotors: ", rotorIn)
-						// I thiiiiiiiinnkkkk the logic is right?? I'm not really sure.
-						rotorOut := encryptChar(rotorIn, rotors, rotorPosition)
-						fmt.Println("letter from rotors for plugboard: ", rotorOut)
+					// - no contradictions, is a possibility (check other paths?)
+					// add all possibilities to list of all possibilities for all possible cribs
 
-						if plugOut, ok := plugboard[rotorOut]; ok { // `exists` was giving multiple declaration warnings
-							fmt.Println("encryption result: ", plugOut)
-							// check for contradictions
-							if plugOut != cribLetter {
-								fmt.Println("CONTRADITCTION:", letter, "plugs to", plugOut, "and", cribLetter)
-								contradiction = true
-								impossibilities[cribLetter] = append(impossibilities[cribLetter], guess)
-								impossibilities[guess] = append(impossibilities[plugOut], cribLetter)
-								break // Contradiction!! -- give up on this path... on this guess??
-							}
-						} else { // assume that we plug to the correct next location
-							// letter --plug--> guess --rotors--> rotorOut --plug--> cribLetter... I think?
-							if _, plugExists := plugboard[cribLetter]; plugExists {
-								fmt.Println("CONTRADITCTION:", letter, "plugs to", plugOut, "and", cribLetter) //TODO update contradiction statements
-								contradiction = true
-								impossibilities[cribLetter] = append(impossibilities[cribLetter], guess)
-								impossibilities[guess] = append(impossibilities[plugOut], cribLetter)
-								break
-							} else {
-								if impossiblePairings, outExists := impossibilities[cribLetter]; outExists {
-									if contains(impossiblePairings, rotorOut) {
-										fmt.Println("CONTRADITCTION:", letter, "plugs to", plugOut, "and", cribLetter)
-										contradiction = true
-										impossibilities[cribLetter] = append(impossibilities[cribLetter], guess)
-										impossibilities[guess] = append(impossibilities[plugOut], cribLetter)
-										break
+					// for each letter in the path
+					for i := 0; i < len(path)-1; i++ {
+						letter := rune(path[i])
+						cribLetter := rune(path[i+1])
+						cribPosition := menu[letter][cribLetter]
+						fmt.Println("crib position: ", cribPosition)
+
+						// - send through enigma rotators/reflector -> write the rotators to step through to the index
+						// step rotators to cribPosition
+						for j := 0; j < cribPosition; j++ {
+							// example code for stepping rotors
+							fmt.Println(rotorPosition)
+							rotorPosition = stepRotors(rotors, rotorPosition)
+							fmt.Println(rotorPosition)
+						}
+
+						// check to see if the letter we are looking at is in the plugboard, else we can't do anything?
+						rotorIn, exists := plugboard[letter]
+						//var rotorInput rune
+						if exists {
+							fmt.Println("from plugboard, what is going into rotors: ", rotorIn)
+							// I thiiiiiiiinnkkkk the logic is right?? I'm not really sure.
+							rotorOut := encryptChar(rotorIn, rotors, rotorPosition)
+							fmt.Println("letter from rotors for plugboard: ", rotorOut)
+
+							if plugOut, ok := plugboard[rotorOut]; ok { // `exists` was giving multiple declaration warnings
+								fmt.Println("encryption result: ", plugOut)
+								// check for contradictions
+								if plugOut != cribLetter {
+									fmt.Println("CONTRADITCTION:", letter, "plugs to", plugOut, "and", cribLetter)
+									contradiction = true
+									impossibilities[cribLetter] = append(impossibilities[cribLetter], guess)
+									impossibilities[guess] = append(impossibilities[plugOut], cribLetter)
+									break // Contradiction!! -- give up on this path... on this guess??
+								}
+							} else { // assume that we plug to the correct next location
+								// letter --plug--> guess --rotors--> rotorOut --plug--> cribLetter... I think?
+								if _, plugExists := plugboard[cribLetter]; plugExists {
+									fmt.Println("CONTRADITCTION:", letter, "plugs to", plugOut, "and", cribLetter) //TODO update contradiction statements
+									contradiction = true
+									impossibilities[cribLetter] = append(impossibilities[cribLetter], guess)
+									impossibilities[guess] = append(impossibilities[plugOut], cribLetter)
+									break
+								} else {
+									if impossiblePairings, outExists := impossibilities[cribLetter]; outExists {
+										if contains(impossiblePairings, rotorOut) {
+											fmt.Println("CONTRADITCTION:", letter, "plugs to", plugOut, "and", cribLetter)
+											contradiction = true
+											impossibilities[cribLetter] = append(impossibilities[cribLetter], guess)
+											impossibilities[guess] = append(impossibilities[plugOut], cribLetter)
+											break
+										}
 									}
 								}
+								plugboard[rotorOut] = cribLetter
+								plugboard[cribLetter] = rotorOut
+								fmt.Println("encryption result: ", cribLetter)
 							}
-							plugboard[rotorOut] = cribLetter
-							plugboard[cribLetter] = rotorOut
-							fmt.Println("encryption result: ", cribLetter)
 						}
 					}
 				}
-			}
-			// add all possibilities to list of all possibilities for all possible cribs
-			if !contradiction {
-				possibilities = append(possibilities, plugboard)
+				// add all possibilities to list of all possibilities for all possible cribs
+				if !contradiction {
+					possibilities = append(possibilities, plugboard)
+				}
 			}
 		}
+		return possibilities
 	}
-	return possibilities
-}
-
+*/
 func newRunBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) []map[rune]rune {
 	var rotors []rotorStruct
-	rotorNames := []string{"I", "IV", "III"} // TODO hardcoded rotors?
+	rotorNames := []string{"I", "IV", "III"}
 	for _, name := range rotorNames {
 		var r rotorStruct
 		r.name = name
@@ -441,7 +453,8 @@ func newRunBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) [
 							// if next letter is in our contradictions list, pull out the contradictions
 							nextLetterContradictions := contradictions[nextLetter]
 							if containsInList(nextLetterContradictions, encryptedPlugCurrentLetter) {
-								// TODO: write function to add plugboard to contradictions
+								// adds the whole plugboard to contradictions
+								contradictions = addToContradictions(plugboard, contradictions)
 								plugboardPossible = false
 								// give up on this
 								break
@@ -453,7 +466,11 @@ func newRunBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) [
 								// found a loop that works - check other possible paths
 								break
 							} else { // otherwise there was some sort of contradiction
-								// TODO: add contradction of nextLetter and encryptedPlugCurrentLetter + whole plugboard
+								// add to plugboard
+								plugboard[nextLetter] = encryptedPlugCurrentLetter
+								plugboard[encryptedPlugCurrentLetter] = nextLetter
+								// add the whole plugboard to contradictions
+								contradictions = addToContradictions(plugboard, contradictions)
 								plugboardPossible = false
 								// give up on this
 								break
@@ -575,8 +592,8 @@ func main() {
 			fmt.Println("paths: ", paths)
 			fmt.Println(paths[0][0]) // first letter of first path
 			inputLetter := rune(paths[0][0])
-			possibilities := runBombe(paths, inputLetter, menu) // update as parameters change and given output
-			// TODO: call newRunBombe()
+			//possibilities := runBombe(paths, inputLetter, menu) // update as parameters change and given output
+			possibilities := newRunBombe(paths, inputLetter, menu)
 
 			for possibility := range possibilities {
 				fmt.Println(possibility)
@@ -589,6 +606,7 @@ func main() {
 			if we don't have the answer, then put a ? in the string
 		*/
 		// TODO: test code in general....
+		// TODO: clean code
 
 		start = cribStart + 1
 	}
