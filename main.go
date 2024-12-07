@@ -278,6 +278,18 @@ func addToContradictions(plugboard map[rune]rune, contradictions map[rune][]rune
 	return contradictions
 }
 
+func addToPossibilities(rotorPos string, plugboard map[rune]rune, possibilities map[string][]map[rune]rune) map[string][]map[rune]rune {
+	// if not in possibilites, add it
+	if _, ok := possibilities[rotorPos]; ok {
+		possibilities[rotorPos] = make([]map[rune]rune, len(plugboard))
+	}
+	// loop through plugboard and add it to possibilites at rotorPos
+	for k, v := range plugboard {
+		possibilities[rotorPos] = append(possibilities[rotorPos], map[rune]rune{k: v})
+	}
+	return possibilities
+}
+
 /*
 	func runBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) []map[rune]rune {
 		var rotors []rotorStruct
@@ -360,7 +372,7 @@ func addToContradictions(plugboard map[rune]rune, contradictions map[rune][]rune
 							} else { // assume that we plug to the correct next location
 								// letter --plug--> guess --rotors--> rotorOut --plug--> cribLetter... I think?
 								if _, plugExists := plugboard[cribLetter]; plugExists {
-									fmt.Println("CONTRADITCTION:", letter, "plugs to", plugOut, "and", cribLetter) //TODO update contradiction statements
+									fmt.Println("CONTRADITCTION:", letter, "plugs to", plugOut, "and", cribLetter)
 									contradiction = true
 									impossibilities[cribLetter] = append(impossibilities[cribLetter], guess)
 									impossibilities[guess] = append(impossibilities[plugOut], cribLetter)
@@ -392,7 +404,7 @@ func addToContradictions(plugboard map[rune]rune, contradictions map[rune][]rune
 		return possibilities
 	}
 */
-func newRunBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) []map[rune]rune {
+func newRunBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) map[string][]map[rune]rune {
 	var rotors []rotorStruct
 	rotorNames := []string{"I", "IV", "III"}
 	for _, name := range rotorNames {
@@ -407,7 +419,9 @@ func newRunBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) [
 	// - check all rotator positions (which ones, what order, starting order)
 	// this does not currently consider the different possible rotors
 	rotorPositionsList := rotorPositions()
-	var possibilities []map[rune]rune // list of possible plugboard solutions
+	// from []map[rune]rune
+	// rotorPositions (as a string) : {possible plugboard}, {another possible plugboard}
+	var possibilities map[string][]map[rune]rune // list of possible plugboard solutions
 
 	// for all rotor positions
 	for _, rotorPosition := range rotorPositionsList {
@@ -487,8 +501,10 @@ func newRunBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) [
 				}
 			}
 			// if the plugboard is still possible, add to possibilities
+			// TODO: check if this is correct
 			if plugboardPossible {
-				// TODO: add to possibilites map thing
+				possibilities := addToPossibilities(string(rotorPosition), plugboard, possibilities)
+				fmt.Println(possibilities) // because it was mad at me....
 			}
 		}
 	}
