@@ -9,9 +9,9 @@ var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 // TODO confirm these are the right turnovers??? From OtherBombCode/rotors.txt.
 var rotorInfo = map[string][]string{
-	"I":   {"EKMFLGDQVZNTOWYHXUSPAIBRCJ", "R"},
-	"II":  {"AJDKSIRUXBLHWTMCQGZNPYFVOE", "F"},
-	"III": {"BDFHJLCPRTXVZNYEIWGAKMUSQO", "W"},
+	"I":   {"EKMFLGDQVZNTOWYHXUSPAIBRCJ", "Q"}, //R"},
+	"II":  {"AJDKSIRUXBLHWTMCQGZNPYFVOE", "E"}, //F"},
+	"III": {"BDFHJLCPRTXVZNYEIWGAKMUSQO", "V"}, //W"},
 	"IV":  {"ESOVPZJAYQUIRHXLNFTGKDCMWB", "K"},
 	"V":   {"VZBRGITYUPSDNHLXAWMJQOFECK", "A"},
 }
@@ -279,6 +279,7 @@ func addToContradictions(plugboard map[rune]rune, contradictions map[rune][]rune
 }
 
 func addToPossibilities(rotorPos string, plugboard map[rune]rune, possibilities map[string][]map[rune]rune) map[string][]map[rune]rune {
+	fmt.Println("adding something to the possibilities!!!")
 	// if not in possibilites, add it
 	if _, ok := possibilities[rotorPos]; ok {
 		possibilities[rotorPos] = make([]map[rune]rune, len(plugboard))
@@ -406,7 +407,7 @@ func addToPossibilities(rotorPos string, plugboard map[rune]rune, possibilities 
 */
 func newRunBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) map[string][]map[rune]rune {
 	var rotors []rotorStruct
-	rotorNames := []string{"I", "IV", "III"}
+	rotorNames := []string{"I", "II", "III"}
 	for _, name := range rotorNames {
 		var r rotorStruct
 		r.name = name
@@ -502,9 +503,9 @@ func newRunBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) m
 			}
 			// if the plugboard is still possible, add to possibilities
 			// TODO: check if this is correct
+			// TODO: include what rotors are true?
 			if plugboardPossible {
-				possibilities := addToPossibilities(string(rotorPosition), plugboard, possibilities)
-				fmt.Println(possibilities) // because it was mad at me....
+				possibilities = addToPossibilities(string(rotorPosition), plugboard, possibilities)
 			}
 		}
 	}
@@ -559,6 +560,30 @@ outside of loops, should have list of all possible plugboards
 
 */
 
+func printPossibility(cipherText string, rotorPos string, plugboardList []map[rune]rune, rotors []rotorStruct) {
+	// for each possibility we can check
+	for _, plugboard := range plugboardList {
+		// for each character in the cipherText
+		for _, cipherChar := range cipherText {
+			// send it through the plugboard
+			if containsInMap(plugboard, cipherChar) {
+				plugCipherChar := plugboard[cipherChar]
+				// encrypt through rotors
+				decryptChar := encryptChar(plugCipherChar, rotors, []rune{rune(rotorPos[0]), rune(rotorPos[1]), rune(rotorPos[2])})
+				// through plugboard again
+				if containsInMap(plugboard, decryptChar) {
+					decryptPlugChar := plugboard[decryptChar]
+					// print the decrypted char
+					fmt.Print(decryptPlugChar)
+					continue
+				}
+			}
+			// if we didn't print a letter, we didn't know the answer. Print a "?"
+			fmt.Print("?")
+		}
+	}
+}
+
 func main() {
 	// in the final product, cipherText and crib won't be pre-initialized,
 	// remove the surrounding if block
@@ -583,7 +608,19 @@ func main() {
 	fmt.Println("Cipher Text: ", cipherText)
 	fmt.Println("Crib: ", crib)
 
-	start := 0 //solution: start = 29, end = 47 (inclusive)
+	// just for printing the possibilities because possibilities don't store rotors
+	var rotors []rotorStruct
+	rotorNames := []string{"I", "II", "III"}
+	for _, name := range rotorNames {
+		var r rotorStruct
+		r.name = name
+		r.letters = rotorInfo[name][0]
+		r.turnover = rotorInfo[name][1]
+		makeWiring(&r)
+		rotors = append(rotors, r)
+	}
+
+	start := 28 //solution: start = 29, end = 47 (inclusive)
 	for start+len(crib) < len(cipherText) {
 		// find a possible crib and create the corresponding menu
 		cribStart, cribEnd := findCrib(start, cipherText, crib)
@@ -610,9 +647,8 @@ func main() {
 			inputLetter := rune(paths[0][0])
 			//possibilities := runBombe(paths, inputLetter, menu) // update as parameters change and given output
 			possibilities := newRunBombe(paths, inputLetter, menu)
-
-			for possibility := range possibilities {
-				fmt.Println(possibility)
+			for rotorPos, plugBoardPossibilities := range possibilities {
+				printPossibility(cipherText, rotorPos, plugBoardPossibilities, rotors)
 			}
 		}
 
