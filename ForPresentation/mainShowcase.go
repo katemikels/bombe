@@ -34,17 +34,8 @@ func index(pos rune, str string) rune {
 	return -1
 }
 
-func contains(letters []rune, guess rune) bool {
-	for _, l := range letters {
-		if l == guess {
-			return true
-		}
-	}
-	return false
-}
-
 func containsInMap(letters map[rune]rune, guess rune) bool {
-	for k, _ := range letters {
+	for k := range letters {
 		if k == guess {
 			return true
 		}
@@ -62,7 +53,7 @@ func containsInList(letters []rune, guess rune) bool {
 }
 
 func containsContradictions(letters map[rune][]rune, guess rune) bool {
-	for k, _ := range letters {
+	for k := range letters {
 		if k == guess {
 			return true
 		}
@@ -147,7 +138,6 @@ func createMenu(crib string, cipherCrib string) map[rune]map[rune]int {
 				menu[plainLetter][cipherLetter] = i
 			}
 		}
-
 		// if the combo is already in the menu, we don't add anything or change the index vals
 	}
 	return menu
@@ -214,11 +204,8 @@ func encryptChar(char rune, rotors []rotorStruct, pos []rune) rune {
 
 	// through rotors right -> left
 	for i, rotor := range rotorsInverse {
-		// I gotta be honest, I took this idea from enigma.py
-		// I never would have thought it out like this without it.
 		charIdx = (charIdx + offsetsInverse[i]) % 26 // adjust for rotor offset
 		charIdx = rotor.wiring[charIdx]              // wiring gives us the alphabet idx of the char on the rotor
-		//charIdx = (charIdx - offsetsInverse[i]) % 26 // why does enigma.py have this line??
 	}
 
 	// reflector
@@ -230,7 +217,7 @@ func encryptChar(char rune, rotors []rotorStruct, pos []rune) rune {
 	for i, rotor := range rotors {
 		charIdx = (charIdx + offsets[i]) % 26 // adjust for rotor offset
 		charIdx = rotor.wiringInverse[charIdx]
-		//charIdx = (charIdx + offsets[i]) % 26 // carried from enigma.py... I don't know what it's supposed to do
+		//charIdx = (charIdx + offsets[i]) % 26 // carried from enigma.py
 	}
 
 	char = rune(alphabet[charIdx]) // back to ASCII
@@ -268,7 +255,7 @@ func searchForPaths(letter rune, menu map[rune]map[rune]int, current rune, path 
 }
 
 func addToContradictions(plugboard map[rune]rune, contradictions map[rune][]rune) map[rune][]rune {
-	for k, _ := range plugboard {
+	for k := range plugboard {
 		if _, ok := contradictions[k]; ok {
 			contradictions[k] = append(contradictions[k], plugboard[k])
 		} else {
@@ -342,7 +329,7 @@ func newRunBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) m
 					}
 
 					// if currentLetter in plugboard, encrypt the plugboard of current letter
-					if containsInMap(plugboard, currentLetter) && plugboardPossible {
+					if containsInMap(plugboard, currentLetter) {
 						plugCurrentLetter := plugboard[currentLetter]
 						encryptedPlugCurrentLetter := encryptChar(plugCurrentLetter, rotors, rotorPosition)
 
@@ -384,9 +371,9 @@ func newRunBombe(paths []string, inputLetter rune, menu map[rune]map[rune]int) m
 
 			}
 			// if the plugboard is still possible, add to possibilities
-			// TODO: check if this is correct
+			// TODO: debug
 			if plugboardPossible {
-				possibilities := addToPossibilities(string(rotorPosition), plugboard, possibilities)
+				possibilities = addToPossibilities(string(rotorPosition), plugboard, possibilities)
 
 				fmt.Println("here: ", possibilities) // because it was mad at me....
 			}
@@ -495,19 +482,13 @@ func main() {
 			fmt.Println("paths: ", paths)
 			fmt.Println(paths[0][0]) // first letter of first path
 			inputLetter := rune(paths[0][0])
-			//possibilities := runBombe(paths, inputLetter, menu) // update as parameters change and given output
 			possibilities := newRunBombe(paths, inputLetter, menu)
 
 			for possibility := range possibilities {
 				fmt.Println("possibility: ", possibility)
 			}
 		}
-
 		start = cribStart + 1
 	}
-
-	// print possible solution
-	fmt.Println("Decrypted text: <DNE>")
-
 	return
 }
